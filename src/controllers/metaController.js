@@ -79,10 +79,10 @@ export async function oauthCallback(req, res) {
       [userId, profile.id || igUserId, profile.username || null, null, longToken, expiresAt]
     );
 
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard?connected=true`);
+    res.json({ ok: true, connected: true, ig_username: profile.username, ig_user_id: profile.id });
   } catch (err) {
     console.error('Meta OAuth error:', err.message);
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard?error=oauth_failed`);
+    res.json({ ok: false, error: err.message });
   }
 }
 
