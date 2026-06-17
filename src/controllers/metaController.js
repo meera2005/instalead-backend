@@ -1,20 +1,21 @@
 import pool from '../db/pool.js';
 
-const META_API = 'https://graph.facebook.com/v19.0';
+const IG_API = 'https://graph.instagram.com';
 
-// Step 1: Redirect user to Meta OAuth dialog
+// Step 1: Redirect user to Instagram OAuth dialog
 export function oauthRedirect(req, res) {
   const params = new URLSearchParams({
-    client_id: process.env.META_APP_ID,
+    force_reauth: 'true',
+    client_id: process.env.INSTAGRAM_APP_ID,
     redirect_uri: `${process.env.APP_URL}/api/meta/callback`,
-    scope: 'instagram_business_basic,instagram_business_manage_messages',
     response_type: 'code',
+    scope: 'instagram_business_basic,instagram_business_manage_messages',
     state: req.user.userId.toString(),
   });
-  res.redirect(`https://www.facebook.com/v19.0/dialog/oauth?${params}`);
+  res.redirect(`https://www.instagram.com/oauth/authorize?${params}`);
 }
 
-// Step 2: Handle OAuth callback — exchange code for token, discover IG account
+// Step 2: Handle OAuth callback — exchange code for token, save IG account
 export async function oauthCallback(req, res) {
   const { code, state } = req.query;
   const userId = parseInt(state, 10);
@@ -25,50 +26,46 @@ export async function oauthCallback(req, res) {
 
   try {
     // Exchange code for short-lived token
-    const tokenRes = await fetch(
-      `${META_API}/oauth/access_token?` +
-        new URLSearchParams({
-          client_id: process.env.META_APP_ID,
-          client_secret: process.env.META_APP_SECRET,
-          redirect_uri: `${process.env.APP_URL}/api/meta/callback`,
-          code,
-        })
-    );
+    const tokenRes = await fetch('https://api.instagram.com/oauth/access_token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: process.env.INSTAGRAM_APP_ID,
+        client_secret: process.env.INSTAGRAM_APP_SECRET,
+        grant_type: 'authorization_code',
+        redirect_uri: `${process.env.APP_URL}/api/meta/callback`,
+        code,
+      }),
+    });
     const tokenData = await tokenRes.json();
-    if (tokenData.error) throw new Error(tokenData.error.message);
+    if (tokenData.error_type) throw new Error(tokenData.error_message);
 
-    // Exchange for long-lived token
+    const shortToken = tokenData.access_token;
+    const igUserId = tokenData.user_id?.toString();
+
+    // Exchange for long-lived token (60 days)
     const longRes = await fetch(
-      `${META_API}/oauth/access_token?` +
+      `${IG_API}/access_token?` +
         new URLSearchParams({
-          grant_type: 'fb_exchange_token',
-          client_id: process.env.META_APP_ID,
-          client_secret: process.env.META_APP_SECRET,
-          fb_exchange_token: tokenData.access_token,
+          grant_type: 'ig_exchange_token',
+          client_secret: process.env.INSTAGRAM_APP_SECRET,
+          access_token: shortToken,
         })
     );
     const longData = await longRes.json();
     if (longData.error) throw new Error(longData.error.message);
 
-    const userLongToken = longData.access_token;
+    const longToken = longData.access_token;
+    const expiresIn = longData.expires_in || 5183944;
 
-    // Get Instagram accounts linked to this user
-    const igAccountsRes = await fetch(
-      `${META_API}/me/instagram_accounts?fields=id,username&access_token=${userLongToken}`
+    // Get IG username
+    const profileRes = await fetch(
+      `${IG_API}/me?fields=id,username&access_token=${longToken}`
     );
-    const igAccountsData = await igAccountsRes.json();
-    if (igAccountsData.error) throw new Error(igAccountsData.error.message);
+    const profile = await profileRes.json();
+    if (profile.error) throw new Error(profile.error.message);
 
-    const igAccount = igAccountsData.data?.[0];
-    if (!igAccount) {
-      return res.redirect(`${process.env.FRONTEND_URL}/dashboard?error=no_ig_account`);
-    }
-
-    const igUserId = igAccount.id;
-    const igUsername = igAccount.username;
-
-    // Calculate token expiry (~60 days for long-lived)
-    const expiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
     await pool.query(
       `INSERT INTO instagram_accounts (user_id, ig_user_id, ig_username, page_id, access_token, token_expires_at)
@@ -76,11 +73,10 @@ export async function oauthCallback(req, res) {
        ON CONFLICT (user_id) DO UPDATE SET
          ig_user_id = EXCLUDED.ig_user_id,
          ig_username = EXCLUDED.ig_username,
-         page_id = EXCLUDED.page_id,
          access_token = EXCLUDED.access_token,
          token_expires_at = EXCLUDED.token_expires_at,
          connected_at = NOW()`,
-      [userId, igUserId, igUsername || null, null, userLongToken, expiresAt]
+      [userId, profile.id || igUserId, profile.username || null, null, longToken, expiresAt]
     );
 
     res.redirect(`${process.env.FRONTEND_URL}/dashboard?connected=true`);
@@ -100,7 +96,7 @@ export async function connectionStatus(req, res) {
   res.json({ connected: true, account: rows[0] });
 }
 
-// GET /api/meta/disconnect
+// POST /api/meta/disconnect
 export async function disconnect(req, res) {
   await pool.query('DELETE FROM instagram_accounts WHERE user_id = $1', [req.user.userId]);
   res.json({ ok: true });
