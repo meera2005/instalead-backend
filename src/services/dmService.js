@@ -129,13 +129,15 @@ export async function sendReply(userId, conversationId, messageText) {
   if (!conv) throw new Error('Conversation not found');
 
   // Send message via Meta
-  const res = await fetch(`${META_API}/me/messages`, {
+  const res = await fetch(`${META_API}/${account.ig_user_id}/messages`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${account.access_token}`,
+    },
     body: JSON.stringify({
       recipient: { id: conv.participant_ig_id },
       message: { text: messageText },
-      access_token: account.access_token,
     }),
   });
   const data = await res.json();

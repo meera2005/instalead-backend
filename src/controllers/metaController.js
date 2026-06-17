@@ -7,7 +7,7 @@ export function oauthRedirect(req, res) {
   const params = new URLSearchParams({
     client_id: process.env.META_APP_ID,
     redirect_uri: `${process.env.APP_URL}/api/meta/callback`,
-    scope: 'instagram_manage_messages,instagram_basic,pages_manage_metadata,pages_show_list',
+    scope: 'instagram_business_basic,instagram_business_manage_messages',
     response_type: 'code',
     state: req.user.userId.toString(),
   });
@@ -52,28 +52,20 @@ export async function oauthCallback(req, res) {
 
     const userLongToken = longData.access_token;
 
-    // Get Facebook Pages the user manages
-    const pagesRes = await fetch(
-      `${META_API}/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${userLongToken}`
+    // Get Instagram accounts linked to this user
+    const igAccountsRes = await fetch(
+      `${META_API}/me/instagram_accounts?fields=id,username&access_token=${userLongToken}`
     );
-    const pagesData = await pagesRes.json();
-    if (pagesData.error) throw new Error(pagesData.error.message);
+    const igAccountsData = await igAccountsRes.json();
+    if (igAccountsData.error) throw new Error(igAccountsData.error.message);
 
-    // Find first page with a linked Instagram business account
-    const page = pagesData.data?.find((p) => p.instagram_business_account);
-    if (!page) {
+    const igAccount = igAccountsData.data?.[0];
+    if (!igAccount) {
       return res.redirect(`${process.env.FRONTEND_URL}/dashboard?error=no_ig_account`);
     }
 
-    const pageToken = page.access_token;
-    const pageId = page.id;
-    const igUserId = page.instagram_business_account.id;
-
-    // Get IG username
-    const igRes = await fetch(
-      `${META_API}/${igUserId}?fields=username&access_token=${pageToken}`
-    );
-    const igData = await igRes.json();
+    const igUserId = igAccount.id;
+    const igUsername = igAccount.username;
 
     // Calculate token expiry (~60 days for long-lived)
     const expiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
@@ -88,7 +80,7 @@ export async function oauthCallback(req, res) {
          access_token = EXCLUDED.access_token,
          token_expires_at = EXCLUDED.token_expires_at,
          connected_at = NOW()`,
-      [userId, igUserId, igData.username || null, pageId, pageToken, expiresAt]
+      [userId, igUserId, igUsername || null, null, userLongToken, expiresAt]
     );
 
     res.redirect(`${process.env.FRONTEND_URL}/dashboard?connected=true`);
