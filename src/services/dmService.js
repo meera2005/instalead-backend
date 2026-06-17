@@ -94,6 +94,24 @@ export async function getMessages(userId, conversationId) {
   return { conversation: convRows[0], messages: rows };
 }
 
+// Update lead status for a conversation
+export async function updateStatus(userId, conversationId, status) {
+  const { rows: convRows } = await pool.query(
+    'SELECT * FROM conversations WHERE id = $1 AND user_id = $2',
+    [conversationId, userId]
+  );
+  if (!convRows[0]) throw new Error('Conversation not found');
+
+  const { rows } = await pool.query(
+    `INSERT INTO leads (conversation_id, user_id, status)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (conversation_id) DO UPDATE SET status = EXCLUDED.status, updated_at = NOW()
+     RETURNING *`,
+    [conversationId, userId, status]
+  );
+  return rows[0];
+}
+
 // Send a reply via Meta API
 export async function sendReply(userId, conversationId, messageText) {
   const { rows: accounts } = await pool.query(

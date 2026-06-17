@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS messages (
 -- CRM leads extracted from conversations
 CREATE TABLE IF NOT EXISTS leads (
   id              SERIAL PRIMARY KEY,
-  conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
+  conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE UNIQUE,
   user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE,
   status          TEXT DEFAULT 'New' CHECK (status IN ('New','Replied','Follow-up Due','Booked','Lost')),
   service_type    TEXT,
