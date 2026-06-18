@@ -1,6 +1,6 @@
 import pool from '../db/pool.js';
 
-const META_API = 'https://graph.facebook.com/v19.0';
+const IG_API = 'https://graph.instagram.com/v21.0';
 
 // Fetch all DM conversations from Meta and sync to DB
 export async function syncConversations(userId) {
@@ -13,9 +13,10 @@ export async function syncConversations(userId) {
 
   const { ig_user_id, access_token } = account;
 
-  // Fetch conversations from Meta
+  // Fetch conversations from Instagram Graph API
   const res = await fetch(
-    `${META_API}/${ig_user_id}/conversations?platform=instagram&fields=id,participants,messages{id,message,from,created_time}&access_token=${access_token}`
+    `${IG_API}/${ig_user_id}/conversations?platform=instagram&fields=id,participants,messages{id,message,from,created_time}`,
+    { headers: { Authorization: `Bearer ${access_token}` } }
   );
   const data = await res.json();
 
@@ -128,8 +129,8 @@ export async function sendReply(userId, conversationId, messageText) {
   const conv = convRows[0];
   if (!conv) throw new Error('Conversation not found');
 
-  // Send message via Meta
-  const res = await fetch(`${META_API}/${account.ig_user_id}/messages`, {
+  // Send message via Instagram API
+  const res = await fetch(`${IG_API}/${account.ig_user_id}/messages`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
