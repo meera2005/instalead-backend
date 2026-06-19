@@ -1,4 +1,5 @@
 import { syncConversations, getConversations, getMessages, sendReply, updateStatus } from '../services/dmService.js';
+import { triggerKnowledgeExtraction } from './aiController.js';
 
 export async function sync(req, res) {
   try {
@@ -51,6 +52,20 @@ export async function reply(req, res) {
   try {
     const result = await sendReply(req.user.userId, req.params.id, message.trim());
     res.json({ ok: true, meta: result });
+
+    // Async: check if this reply contains new knowledge (never blocks the response)
+    const { getMessages } = await import('../services/dmService.js');
+    getMessages(req.user.userId, req.params.id).then(({ messages }) => {
+      const lastCustomerMsg = [...messages].reverse().find(m => m.direction === 'inbound');
+      if (lastCustomerMsg) {
+        triggerKnowledgeExtraction(
+          req.user.userId,
+          req.params.id,
+          message.trim(),
+          lastCustomerMsg.body
+        );
+      }
+    }).catch(() => {});
   } catch (err) {
     console.error(err);
     res.status(400).json({ error: err.message });

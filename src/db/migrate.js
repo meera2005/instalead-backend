@@ -75,6 +75,17 @@ CREATE TABLE IF NOT EXISTS business_profiles (
   updated_at        TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- AI-detected knowledge suggestions from owner replies
+CREATE TABLE IF NOT EXISTS knowledge_suggestions (
+  id              SERIAL PRIMARY KEY,
+  user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
+  suggestion      TEXT NOT NULL,
+  category        TEXT,
+  status          TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);
 CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);

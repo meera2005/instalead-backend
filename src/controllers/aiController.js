@@ -1,5 +1,5 @@
 import pool from '../db/pool.js';
-import { suggestReply, analyzeConversation, chatReply } from '../services/aiService.js';
+import { suggestReply, analyzeConversation, chatReply, extractKnowledge } from '../services/aiService.js';
 
 export async function getProfile(req, res) {
   try {
@@ -59,6 +59,86 @@ export async function getSuggestedReplies(req, res) {
     res.json({ suggestions });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+}
+
+export async function getSuggestions(req, res) {
+  try {
+    const { rows } = await pool.query(
+      `SELECT ks.*, c.participant_name
+       FROM knowledge_suggestions ks
+       LEFT JOIN conversations c ON c.id = ks.conversation_id
+       WHERE ks.user_id = $1 AND ks.status = 'pending'
+       ORDER BY ks.created_at DESC`,
+      [req.user.userId]
+    );
+    res.json({ suggestions: rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function getSuggestionsCount(req, res) {
+  try {
+    const { rows } = await pool.query(
+      `SELECT COUNT(*) as count FROM knowledge_suggestions WHERE user_id = $1 AND status = 'pending'`,
+      [req.user.userId]
+    );
+    res.json({ count: parseInt(rows[0].count) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function resolveSuggestion(req, res) {
+  const { id } = req.params;
+  const { action } = req.body; // 'approve' or 'reject'
+  if (!['approve', 'reject'].includes(action)) {
+    return res.status(400).json({ error: 'action must be approve or reject' });
+  }
+  try {
+    const { rows } = await pool.query(
+      `UPDATE knowledge_suggestions SET status = $1 WHERE id = $2 AND user_id = $3 RETURNING *`,
+      [action === 'approve' ? 'approved' : 'rejected', id, req.user.userId]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Suggestion not found' });
+
+    if (action === 'approve') {
+      // Append to business profile FAQs
+      await pool.query(
+        `INSERT INTO business_profiles (user_id, faqs, updated_at)
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (user_id) DO UPDATE SET
+           faqs = CASE
+             WHEN business_profiles.faqs IS NULL OR business_profiles.faqs = ''
+             THEN EXCLUDED.faqs
+             ELSE business_profiles.faqs || E'\n' || EXCLUDED.faqs
+           END,
+           updated_at = NOW()`,
+        [req.user.userId, rows[0].suggestion]
+      );
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function triggerKnowledgeExtraction(userId, conversationId, ownerReply, customerMessage) {
+  try {
+    const { rows: profileRows } = await pool.query(
+      'SELECT * FROM business_profiles WHERE user_id = $1', [userId]
+    );
+    const result = await extractKnowledge(ownerReply, customerMessage, profileRows[0]);
+    if (result) {
+      await pool.query(
+        `INSERT INTO knowledge_suggestions (user_id, conversation_id, suggestion, category)
+         VALUES ($1, $2, $3, $4)`,
+        [userId, conversationId, result.suggestion, result.category]
+      );
+    }
+  } catch {
+    // Non-blocking — never let this crash the reply flow
   }
 }
 

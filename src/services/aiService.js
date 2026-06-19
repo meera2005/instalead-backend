@@ -54,6 +54,42 @@ export async function suggestReply(messages, profile) {
   return text.split(/\n?\d+\.\s+/).filter(s => s.trim()).slice(0, 3);
 }
 
+export async function extractKnowledge(ownerReply, customerMessage, profile) {
+  if (!process.env.OPENAI_API_KEY) return null;
+
+  const existingKnowledge = [profile?.services, profile?.faqs].filter(Boolean).join('\n');
+
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    max_tokens: 200,
+    messages: [{
+      role: 'user',
+      content: `A business owner just replied to a customer DM.
+
+Customer asked: "${customerMessage}"
+Owner replied: "${ownerReply}"
+
+Existing knowledge base:
+${existingKnowledge || '(empty)'}
+
+Does the owner's reply contain NEW factual information (a specific price, service, policy, availability, or FAQ answer) that is NOT already in the knowledge base?
+
+If YES, return JSON: {"found": true, "category": "pricing|service|policy|faq", "suggestion": "one clear sentence stating the new fact"}
+If NO new info, return JSON: {"found": false}
+
+Return ONLY valid JSON, nothing else.`,
+    }],
+  });
+
+  const text = response.choices[0].message.content.trim();
+  try {
+    const result = JSON.parse(text);
+    return result.found ? result : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function chatReply(history, profile) {
   if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY not configured');
 
