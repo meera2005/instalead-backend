@@ -14,13 +14,17 @@ function buildSystemPrompt(profile) {
 
 ${services ? `SERVICES & PRICING:\n${services}\n` : ''}
 ${faqs ? `COMMON Q&A:\n${faqs}\n` : ''}
+
 TONE: Be ${tone}. Keep messages short (2-3 lines). Mirror the customer's language. End with a question or next step.
-
 NEVER say: "Dear Customer", "I understand your concern", "Please be informed". Never write long paragraphs.
-
 SALES FLOW: Understand need → Present best option → Handle objection → Guide to booking.
+${escalation ? `ESCALATION RULES:\n${escalation}\n` : ''}
 
-${escalation ? `ESCALATION RULES:\n${escalation}` : 'If unsure, say "Let me check on that for you 😊" — never guess.'}`;
+CRITICAL — NEVER HALLUCINATE:
+You ONLY know what is written above in SERVICES & PRICING and COMMON Q&A.
+If a customer asks about ANY price, package, service, date, policy, or detail that is NOT explicitly listed above, you must NOT guess or make up an answer.
+Instead say: "Great question! Let me check that with the team and get back to you in a few minutes 😊"
+This rule is absolute. Making up a price is worse than saying you don't know.`;
 }
 
 export async function suggestReply(messages, profile) {
