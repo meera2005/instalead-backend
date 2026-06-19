@@ -62,6 +62,19 @@ CREATE TABLE IF NOT EXISTS leads (
   updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Business AI profile (one per user — stores knowledge base for AI replies)
+CREATE TABLE IF NOT EXISTS business_profiles (
+  id                SERIAL PRIMARY KEY,
+  user_id           INTEGER REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+  business_name     TEXT,
+  business_type     TEXT,
+  services          TEXT,
+  tone              TEXT DEFAULT 'friendly',
+  faqs              TEXT,
+  escalation_rules  TEXT,
+  updated_at        TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);
 CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
@@ -74,6 +87,9 @@ async function migrate() {
   try {
     console.log('Running migrations...');
     await client.query(schema);
+    // Additive column migrations (safe to re-run)
+    await client.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS lead_temperature TEXT DEFAULT 'Warm'`);
+    await client.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS follow_up_date TIMESTAMPTZ`);
     console.log('✅ Database schema ready.');
   } finally {
     client.release();
