@@ -50,6 +50,26 @@ export async function suggestReply(messages, profile) {
   return text.split(/\n?\d+\.\s+/).filter(s => s.trim()).slice(0, 3);
 }
 
+export async function chatReply(history, profile) {
+  if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY not configured');
+
+  const openaiMessages = history.map(m => ({
+    role: m.role,
+    content: m.content,
+  }));
+
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    max_tokens: 300,
+    messages: [
+      { role: 'system', content: buildSystemPrompt(profile) },
+      ...openaiMessages,
+    ],
+  });
+
+  return response.choices[0].message.content.trim();
+}
+
 export async function analyzeConversation(messages, profile) {
   if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY not configured');
 

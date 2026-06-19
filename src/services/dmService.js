@@ -113,7 +113,7 @@ export async function updateStatus(userId, conversationId, status) {
   return rows[0];
 }
 
-// Send a reply via Meta API
+// Send a reply via Instagram API (falls back to local-only if delivery fails)
 export async function sendReply(userId, conversationId, messageText) {
   const { rows: accounts } = await pool.query(
     'SELECT * FROM instagram_accounts WHERE user_id = $1',
@@ -129,31 +129,41 @@ export async function sendReply(userId, conversationId, messageText) {
   const conv = convRows[0];
   if (!conv) throw new Error('Conversation not found');
 
-  // Send message via Instagram API
-  const res = await fetch(`${IG_API}/${account.ig_user_id}/messages`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${account.access_token}`,
-    },
-    body: JSON.stringify({
-      recipient: { id: conv.participant_ig_id },
-      message: { text: messageText },
-    }),
-  });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
+  let igMessageId = `local_${Date.now()}`;
+  let deliveryWarning = null;
 
-  // Save outbound message to DB
+  // Attempt Instagram delivery
+  try {
+    const igRes = await fetch(`${IG_API}/${account.ig_user_id}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${account.access_token}`,
+      },
+      body: JSON.stringify({
+        recipient: { id: conv.participant_ig_id },
+        message: { text: messageText },
+      }),
+    });
+    const igData = await igRes.json();
+    if (igData.error) {
+      deliveryWarning = igData.error.message;
+    } else {
+      igMessageId = igData.message_id;
+    }
+  } catch (err) {
+    deliveryWarning = err.message;
+  }
+
+  // Always save to DB so the UI reflects the reply
   await pool.query(
     `INSERT INTO messages (conversation_id, ig_message_id, direction, body, sent_at)
      VALUES ($1, $2, 'outbound', $3, NOW())
      ON CONFLICT (ig_message_id) DO NOTHING`,
-    [conversationId, data.message_id, messageText]
+    [conversationId, igMessageId, messageText]
   );
 
-  // Update conversation timestamp
   await pool.query('UPDATE conversations SET last_message_at = NOW() WHERE id = $1', [conversationId]);
 
-  return data;
+  return { message_id: igMessageId, delivery_warning: deliveryWarning };
 }

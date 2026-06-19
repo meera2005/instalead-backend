@@ -1,5 +1,5 @@
 import pool from '../db/pool.js';
-import { suggestReply, analyzeConversation } from '../services/aiService.js';
+import { suggestReply, analyzeConversation, chatReply } from '../services/aiService.js';
 
 export async function getProfile(req, res) {
   try {
@@ -57,6 +57,23 @@ export async function getSuggestedReplies(req, res) {
 
     const suggestions = await suggestReply(messages, profileRows[0]);
     res.json({ suggestions });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function simulateChat(req, res) {
+  const { history } = req.body;
+  if (!Array.isArray(history) || history.length === 0) {
+    return res.status(400).json({ error: 'history array is required' });
+  }
+  try {
+    const { rows: profileRows } = await pool.query(
+      'SELECT * FROM business_profiles WHERE user_id = $1',
+      [req.user.userId]
+    );
+    const reply = await chatReply(history, profileRows[0]);
+    res.json({ reply });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
