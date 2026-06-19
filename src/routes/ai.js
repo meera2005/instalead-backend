@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
-import { getProfile, upsertProfile, getSuggestedReplies, analyzeConv, simulateChat, getSuggestions, getSuggestionsCount, resolveSuggestion } from '../controllers/aiController.js';
+import { getProfile, upsertProfile, getSuggestedReplies, analyzeConv, simulateChat, getSuggestions, getSuggestionsCount, resolveSuggestion, learnFromMessage } from '../controllers/aiController.js';
 
 const router = Router();
 
@@ -12,5 +12,6 @@ router.post('/chat', requireAuth, simulateChat);
 router.get('/suggestions', requireAuth, getSuggestions);
 router.get('/suggestions/count', requireAuth, getSuggestionsCount);
 router.post('/suggestions/:id/resolve', requireAuth, resolveSuggestion);
+router.post('/learn', requireAuth, learnFromMessage);
 
 export default router;

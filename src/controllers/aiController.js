@@ -124,6 +124,34 @@ export async function resolveSuggestion(req, res) {
   }
 }
 
+export async function learnFromMessage(req, res) {
+  const { ownerReply, customerMessage } = req.body;
+  if (!ownerReply?.trim()) return res.status(400).json({ error: 'ownerReply is required' });
+  try {
+    const { rows: profileRows } = await pool.query(
+      'SELECT * FROM business_profiles WHERE user_id = $1', [req.user.userId]
+    );
+    const result = await extractKnowledge(ownerReply, customerMessage || '', profileRows[0]);
+    const fact = result?.suggestion || ownerReply.trim();
+
+    await pool.query(
+      `INSERT INTO business_profiles (user_id, faqs, updated_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (user_id) DO UPDATE SET
+         faqs = CASE
+           WHEN business_profiles.faqs IS NULL OR business_profiles.faqs = ''
+           THEN EXCLUDED.faqs
+           ELSE business_profiles.faqs || E'\n' || EXCLUDED.faqs
+         END,
+         updated_at = NOW()`,
+      [req.user.userId, fact]
+    );
+    res.json({ saved: fact });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
 export async function triggerKnowledgeExtraction(userId, conversationId, ownerReply, customerMessage) {
   try {
     const { rows: profileRows } = await pool.query(
