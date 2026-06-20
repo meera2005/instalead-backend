@@ -11,7 +11,7 @@ export async function syncConversations(userId) {
   const account = accounts[0];
   if (!account) throw new Error('No Instagram account connected');
 
-  const { ig_user_id, access_token } = account;
+  const { ig_user_id, page_id, access_token } = account;
 
   // Fetch conversations from Instagram Graph API
   const res = await fetch(
@@ -26,7 +26,7 @@ export async function syncConversations(userId) {
 
   for (const thread of data.data || []) {
     // Identify the non-business participant (the lead)
-    const participant = thread.participants?.data?.find((p) => p.id !== ig_user_id);
+    const participant = thread.participants?.data?.find((p) => p.id !== ig_user_id && p.id !== page_id);
 
     // Upsert conversation
     const { rows: convRows } = await pool.query(
