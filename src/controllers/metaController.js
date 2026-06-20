@@ -2,7 +2,7 @@ import pool from '../db/pool.js';
 
 const IG_API = 'https://graph.instagram.com';
 
-// Step 1: Redirect user to Instagram OAuth dialog
+// Step 1: Return Instagram OAuth URL (frontend fetches this, then navigates)
 export function oauthRedirect(req, res) {
   const params = new URLSearchParams({
     force_reauth: 'true',
@@ -12,7 +12,7 @@ export function oauthRedirect(req, res) {
     scope: 'instagram_business_basic,instagram_business_manage_messages',
     state: req.user.userId.toString(),
   });
-  res.redirect(`https://www.instagram.com/oauth/authorize?${params}`);
+  res.json({ url: `https://www.instagram.com/oauth/authorize?${params}` });
 }
 
 // Step 2: Handle OAuth callback — exchange code for token, save IG account
@@ -79,10 +79,10 @@ export async function oauthCallback(req, res) {
       [userId, profile.id || igUserId, profile.username || null, null, longToken, expiresAt]
     );
 
-    res.json({ ok: true, connected: true, ig_username: profile.username, ig_user_id: profile.id });
+    res.redirect(`${process.env.FRONTEND_URL}/settings?connected=true`);
   } catch (err) {
     console.error('Meta OAuth error:', err.message);
-    res.json({ ok: false, error: err.message });
+    res.redirect(`${process.env.FRONTEND_URL}/settings?error=${encodeURIComponent(err.message)}`);
   }
 }
 
