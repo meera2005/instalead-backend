@@ -31,6 +31,20 @@ export async function getThread(req, res) {
   }
 }
 
+export async function patchName(req, res) {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Name is required' });
+  try {
+    await pool.query(
+      'UPDATE conversations SET participant_name = $1 WHERE id = $2 AND user_id = $3',
+      [name.trim(), req.params.id, req.user.userId]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
 export async function patchStatus(req, res) {
   const { status } = req.body;
   const valid = ['New', 'Replied', 'Follow-up Due', 'Booked', 'Lost'];
