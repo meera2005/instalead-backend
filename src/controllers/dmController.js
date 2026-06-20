@@ -1,3 +1,4 @@
+import pool from '../db/pool.js';
 import { syncConversations, getConversations, getMessages, sendReply, updateStatus } from '../services/dmService.js';
 import { triggerKnowledgeExtraction } from './aiController.js';
 
