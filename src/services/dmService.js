@@ -33,7 +33,7 @@ export async function syncConversations(userId) {
       `INSERT INTO conversations (user_id, ig_thread_id, participant_name, participant_ig_id, last_message_at)
        VALUES ($1, $2, $3, $4, NOW())
        ON CONFLICT (user_id, ig_thread_id) DO UPDATE SET
-         participant_name = EXCLUDED.participant_name,
+         participant_name = COALESCE(NULLIF(EXCLUDED.participant_name, 'Unknown'), conversations.participant_name),
          last_message_at = NOW()
        RETURNING *`,
       [userId, thread.id, participant?.name || 'Unknown', participant?.id || null]
