@@ -52,6 +52,19 @@ export async function syncConversations(userId) {
     }
 
     synced.push(conv);
+
+    // Also update name on any webhook-created conversations with same participant
+    // (webhook uses a different ig_thread_id format so they don't conflict above)
+    if (participant?.name && participant.name !== 'Unknown' && participant?.id) {
+      await pool.query(
+        `UPDATE conversations
+         SET participant_name = $1
+         WHERE user_id = $2
+           AND participant_ig_id = $3
+           AND (participant_name IS NULL OR participant_name = 'Unknown')`,
+        [participant.name, userId, participant.id]
+      );
+    }
   }
 
   return synced;
