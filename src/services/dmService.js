@@ -129,41 +129,41 @@ export async function sendReply(userId, conversationId, messageText) {
   const conv = convRows[0];
   if (!conv) throw new Error('Conversation not found');
 
-  let igMessageId = `local_${Date.now()}`;
-  let deliveryWarning = null;
+  // Send via Instagram API
+  const igRes = await fetch(`${IG_API}/${account.ig_user_id}/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${account.access_token}`,
+    },
+    body: JSON.stringify({
+      recipient: { id: conv.participant_ig_id },
+      message: { text: messageText },
+    }),
+  });
+  const igData = await igRes.json();
 
-  // Attempt Instagram delivery
-  try {
-    const igRes = await fetch(`${IG_API}/${account.ig_user_id}/messages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${account.access_token}`,
-      },
-      body: JSON.stringify({
-        recipient: { id: conv.participant_ig_id },
-        message: { text: messageText },
-      }),
-    });
-    const igData = await igRes.json();
-    if (igData.error) {
-      deliveryWarning = igData.error.message;
-    } else {
-      igMessageId = igData.message_id;
-    }
-  } catch (err) {
-    deliveryWarning = err.message;
+  if (igData.error) {
+    console.error('Instagram send error:', JSON.stringify(igData.error));
+    // Save locally anyway so the message appears in the UI
+    const localId = `local_${Date.now()}`;
+    await pool.query(
+      `INSERT INTO messages (conversation_id, ig_message_id, direction, body, sent_at)
+       VALUES ($1, $2, 'outbound', $3, NOW()) ON CONFLICT (ig_message_id) DO NOTHING`,
+      [conversationId, localId, messageText]
+    );
+    await pool.query('UPDATE conversations SET last_message_at = NOW() WHERE id = $1', [conversationId]);
+    return { message_id: localId, delivery_warning: igData.error.message };
   }
 
-  // Always save to DB so the UI reflects the reply
+  // Success — save with real Instagram message ID
   await pool.query(
     `INSERT INTO messages (conversation_id, ig_message_id, direction, body, sent_at)
      VALUES ($1, $2, 'outbound', $3, NOW())
      ON CONFLICT (ig_message_id) DO NOTHING`,
-    [conversationId, igMessageId, messageText]
+    [conversationId, igData.message_id, messageText]
   );
-
   await pool.query('UPDATE conversations SET last_message_at = NOW() WHERE id = $1', [conversationId]);
 
-  return { message_id: igMessageId, delivery_warning: deliveryWarning };
+  return { message_id: igData.message_id, delivery_warning: null };
 }

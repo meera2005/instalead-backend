@@ -50,26 +50,48 @@ export async function receive(req, res) {
 async function handleMessageEvent(pageId, event) {
   if (!event.message) return;
 
-  // Find which user owns this Page/IG account
-  const { rows: accounts } = await pool.query(
-    'SELECT * FROM instagram_accounts WHERE page_id = $1',
+  // Find which user owns this IG account — try ig_user_id first, fall back to page_id
+  let { rows: accounts } = await pool.query(
+    'SELECT * FROM instagram_accounts WHERE ig_user_id = $1',
     [pageId]
   );
+  if (!accounts[0]) {
+    ({ rows: accounts } = await pool.query(
+      'SELECT * FROM instagram_accounts WHERE page_id = $1',
+      [pageId]
+    ));
+  }
   const account = accounts[0];
-  if (!account) return; // Unknown page — ignore
+  if (!account) {
+    console.warn(`Webhook: no account found for pageId=${pageId}`);
+    return;
+  }
 
   const senderId = event.sender.id;
   const recipientId = event.recipient.id;
   const isInbound = senderId !== account.ig_user_id;
   const participantId = isInbound ? senderId : recipientId;
 
+  // Try to fetch participant's Instagram name
+  let participantName = null;
+  try {
+    const nameRes = await fetch(
+      `https://graph.instagram.com/v21.0/${participantId}?fields=name&access_token=${account.access_token}`
+    );
+    const nameData = await nameRes.json();
+    if (nameData.name) participantName = nameData.name;
+  } catch {}
+
   // Upsert conversation
   const { rows: convRows } = await pool.query(
-    `INSERT INTO conversations (user_id, ig_thread_id, participant_ig_id, last_message_at)
-     VALUES ($1, $2, $3, NOW())
-     ON CONFLICT (user_id, ig_thread_id) DO UPDATE SET last_message_at = NOW()
+    `INSERT INTO conversations (user_id, ig_thread_id, participant_ig_id, participant_name, last_message_at)
+     VALUES ($1, $2, $3, $4, NOW())
+     ON CONFLICT (user_id, ig_thread_id) DO UPDATE SET
+       last_message_at = NOW(),
+       participant_ig_id = EXCLUDED.participant_ig_id,
+       participant_name = COALESCE(EXCLUDED.participant_name, conversations.participant_name)
      RETURNING *`,
-    [account.user_id, `${account.ig_user_id}_${participantId}`, participantId]
+    [account.user_id, `${account.ig_user_id}_${participantId}`, participantId, participantName]
   );
   const conv = convRows[0];
 
@@ -82,5 +104,5 @@ async function handleMessageEvent(pageId, event) {
     [conv.id, igMsgId, isInbound ? 'inbound' : 'outbound', event.message.text, event.timestamp]
   );
 
-  console.log(`📨 New ${isInbound ? 'inbound' : 'outbound'} message saved for user ${account.user_id}`);
+  console.log(`📨 ${isInbound ? 'inbound' : 'outbound'} message from ${participantName || participantId} saved for user ${account.user_id}`);
 }
