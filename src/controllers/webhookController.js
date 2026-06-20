@@ -69,7 +69,9 @@ async function handleMessageEvent(pageId, event) {
 
   const senderId = event.sender.id;
   const recipientId = event.recipient.id;
-  const isInbound = senderId !== account.ig_user_id;
+  // insta_leadtest appears as both ig_user_id (new API) and pageId (webhook context)
+  const isOurMessage = senderId === account.ig_user_id || senderId === pageId;
+  const isInbound = !isOurMessage;
   const participantId = isInbound ? senderId : recipientId;
 
   // Try to fetch participant's Instagram name
