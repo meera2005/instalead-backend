@@ -110,6 +110,45 @@ export async function chatReply(history, profile) {
   return response.choices[0].message.content.trim();
 }
 
+export async function generateInsights(conversations) {
+  if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY not configured');
+
+  const summaries = conversations.map(c => {
+    const msgs = c.messages.map(m => `${m.direction === 'inbound' ? 'Customer' : 'Business'}: ${m.body}`).join('\n');
+    return `--- ${c.name} (Status: ${c.status || 'New'}) ---\n${msgs}`;
+  }).join('\n\n');
+
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    max_tokens: 800,
+    messages: [{
+      role: 'user',
+      content: `You are a business analyst. Analyze these Instagram DM conversations from a photography business and generate 5 sharp business insights.
+
+${summaries}
+
+Return ONLY a JSON array of 5 insight objects:
+[
+  {
+    "type": "warning|tip|success|info",
+    "title": "short headline (max 8 words)",
+    "body": "1-2 sentences with specific observation from the conversations"
+  }
+]
+
+Types: "warning" = problem/risk, "tip" = actionable improvement, "success" = what's working, "info" = pattern/trend.
+Be specific — reference actual prices, services, or patterns you see. Not generic advice.`,
+    }],
+  });
+
+  const text = response.choices[0].message.content.trim();
+  const match = text.match(/\[[\s\S]*\]/);
+  if (match) {
+    try { return JSON.parse(match[0]); } catch {}
+  }
+  return [];
+}
+
 export async function analyzeConversation(messages, profile) {
   if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY not configured');
 

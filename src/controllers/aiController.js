@@ -1,5 +1,5 @@
 import pool from '../db/pool.js';
-import { suggestReply, analyzeConversation, chatReply, extractKnowledge } from '../services/aiService.js';
+import { suggestReply, analyzeConversation, chatReply, extractKnowledge, generateInsights } from '../services/aiService.js';
 
 export async function getProfile(req, res) {
   try {
@@ -167,6 +167,34 @@ export async function triggerKnowledgeExtraction(userId, conversationId, ownerRe
     }
   } catch {
     // Non-blocking — never let this crash the reply flow
+  }
+}
+
+export async function getInsights(req, res) {
+  try {
+    const { rows: convRows } = await pool.query(
+      `SELECT c.id, c.participant_name, l.status
+       FROM conversations c
+       LEFT JOIN leads l ON l.conversation_id = c.id
+       WHERE c.user_id = $1
+       ORDER BY c.last_message_at DESC
+       LIMIT 20`,
+      [req.user.userId]
+    );
+    if (convRows.length < 3) return res.json({ insights: [] });
+
+    const convData = await Promise.all(convRows.map(async (c) => {
+      const { rows: msgs } = await pool.query(
+        'SELECT direction, body FROM messages WHERE conversation_id = $1 ORDER BY sent_at ASC LIMIT 10',
+        [c.id]
+      );
+      return { name: c.participant_name || 'Unknown', status: c.status, messages: msgs };
+    }));
+
+    const insights = await generateInsights(convData);
+    res.json({ insights });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 }
 
