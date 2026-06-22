@@ -77,6 +77,7 @@ export async function getConversations(userId) {
             m.body AS last_message,
             m.direction AS last_direction,
             l.status AS lead_status,
+            l.lead_temperature,
             l.id AS lead_id
      FROM conversations c
      LEFT JOIN LATERAL (
