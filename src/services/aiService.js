@@ -57,25 +57,22 @@ export async function suggestReply(messages, profile) {
 export async function extractKnowledge(ownerReply, customerMessage, profile) {
   if (!process.env.OPENAI_API_KEY) return null;
 
-  const existingKnowledge = [profile?.services, profile?.faqs].filter(Boolean).join('\n');
-
   const response = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
-    max_tokens: 200,
+    max_tokens: 250,
     messages: [{
       role: 'user',
-      content: `A business owner just replied to a customer DM.
+      content: `A business owner replied to a customer DM. Extract a context-aware knowledge entry.
 
-Customer asked: "${customerMessage}"
-Owner replied: "${ownerReply}"
+Customer: "${customerMessage}"
+Owner: "${ownerReply}"
 
-Existing knowledge base:
-${existingKnowledge || '(empty)'}
+Does this exchange contain a concrete business fact — a price, policy, service detail, availability rule, or FAQ answer?
 
-Does the owner's reply contain NEW factual information (a specific price, service, policy, availability, or FAQ answer) that is NOT already in the knowledge base?
+If YES: return JSON with a suggestion written as a clear Q&A or rule, including the CONTEXT of what was asked.
+Example: {"found": true, "category": "pricing", "suggestion": "When customers ask about haldi shoot at a lower budget (e.g. ₹5,000), we can offer a 1.5-hour shoot for ₹7,500 as a compromise."}
 
-If YES, return JSON: {"found": true, "category": "pricing|service|policy|faq", "suggestion": "one clear sentence stating the new fact"}
-If NO new info, return JSON: {"found": false}
+If NO factual business info (e.g. owner just said "thanks", "ok", "will check"): return {"found": false}
 
 Return ONLY valid JSON, nothing else.`,
     }],

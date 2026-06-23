@@ -132,8 +132,9 @@ export async function learnFromMessage(req, res) {
       'SELECT * FROM business_profiles WHERE user_id = $1', [req.user.userId]
     );
     const result = await extractKnowledge(ownerReply, customerMessage || '', profileRows[0]);
-    const fact = result?.suggestion || ownerReply.trim();
+    if (!result) return res.json({ saved: null, message: 'No business fact found to save' });
 
+    const fact = result.suggestion;
     await pool.query(
       `INSERT INTO business_profiles (user_id, faqs, updated_at)
        VALUES ($1, $2, NOW())
