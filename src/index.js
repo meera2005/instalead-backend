@@ -7,6 +7,7 @@ import metaRoutes from './routes/meta.js';
 import dmRoutes from './routes/dms.js';
 import webhookRoutes from './routes/webhook.js';
 import aiRoutes from './routes/ai.js';
+import waitlistRoutes from './routes/waitlist.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -42,6 +43,7 @@ app.use('/api/meta', metaRoutes);
 app.use('/api/dms', dmRoutes);
 app.use('/api/webhook', webhookRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/waitlist', waitlistRoutes);
 
 app.listen(PORT, () => {
   console.log(`🚀 InstaLead backend running on port ${PORT}`);

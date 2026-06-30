@@ -101,6 +101,15 @@ async function migrate() {
     // Additive column migrations (safe to re-run)
     await client.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS lead_temperature TEXT DEFAULT 'Warm'`);
     await client.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS follow_up_date TIMESTAMPTZ`);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS demo_requests (
+        id         SERIAL PRIMARY KEY,
+        name       TEXT,
+        email      TEXT,
+        whatsapp   TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
     console.log('✅ Database schema ready.');
   } finally {
     client.release();
