@@ -1,95 +1,43 @@
 /**
- * Seeds demo conversations for The Label (ethnic clothing brand) — user 3
+ * Seeds demo account for The Label (ethnic clothing brand)
+ * Creates: demo@thelabel.com / thelabel123
  * Run: node scripts/seed_clothing_demo.js
  */
 import pg from 'pg';
+import bcrypt from 'bcryptjs';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-const USER_ID = 3;
+const DEMO_EMAIL = 'demo@thelabel.com';
+const DEMO_PASSWORD = 'thelabel123';
 
 const DEMO_CONVERSATIONS = [
+  // ── PRE-PURCHASE HELP ──
   {
     name: 'Riya Kapoor',
     thread: 'label_riya_kapoor',
     status: 'Booked',
     temperature: 'Hot',
     messages: [
-      { dir: 'inbound',  body: 'Hi! I saw the sage green coord set on your stories and I\'m obsessed 😍 Is it available in size S?', hoursAgo: 72 },
-      { dir: 'outbound', body: 'Hey Riya! Yes, the sage green coord set is available in S 🌿 It\'s ₹4,500. The fabric is soft chanderi so it drapes really beautifully. Want me to share the size chart?', hoursAgo: 71 },
-      { dir: 'inbound',  body: 'Yes please! Also does it come in other colours?', hoursAgo: 70 },
-      { dir: 'outbound', body: 'It\'s available in sage green, dusty pink, and ivory 🤍 All three are in S right now. You can order directly from our website — the link is in bio!', hoursAgo: 69 },
-      { dir: 'inbound',  body: 'Just ordered the ivory S from the website! So excited 🛍️', hoursAgo: 67 },
-      { dir: 'outbound', body: 'Amazing!! You\'re going to love it 🤍 We\'ll ship within 2 business days. Drop us a tag when it arrives!', hoursAgo: 66 },
-    ]
-  },
-  {
-    name: 'Ananya Mehta',
-    thread: 'label_ananya_mehta',
-    status: 'Booked',
-    temperature: 'Hot',
-    messages: [
-      { dir: 'inbound',  body: 'Hello! I wanted to order the mirror work kurta set I saw on your page. It looks stunning!', hoursAgo: 120 },
-      { dir: 'outbound', body: 'Hi Ananya! 🌟 Thank you so much! The mirror work kurta set is available in XS to XL at ₹3,200. Which size were you thinking?', hoursAgo: 119 },
-      { dir: 'inbound',  body: 'I\'m usually a M. Does it run true to size?', hoursAgo: 118 },
-      { dir: 'outbound', body: 'Our M fits a 36-38 inch bust comfortably — it\'s a relaxed fit so most people find it true to size 😊 Go ahead and order on the website, link in bio!', hoursAgo: 117 },
-      { dir: 'inbound',  body: 'Ordered! ✅ Also is there a coupon code I can use?', hoursAgo: 116 },
-      { dir: 'outbound', body: 'So happy! 🎉 We don\'t have an active coupon right now, but watch our stories — we drop codes for new collection launches! Your order will ship in 2 business days 🌸', hoursAgo: 115 },
+      { dir: 'inbound',  body: 'Hi! I saw the ivory coord set on your stories and I\'m obsessed 😍 I\'m usually between S and M — which size should I pick?', hoursAgo: 72 },
+      { dir: 'outbound', body: 'Hey Riya! Our coord sets have a relaxed fit — if you\'re between S and M, I\'d suggest S for a more fitted look or M if you love a flowy style 🌿 The ivory is stunning either way! Size chart is on the product page 🤍', hoursAgo: 71 },
+      { dir: 'inbound',  body: 'Going with S! Just ordered from the website 🛍️', hoursAgo: 69 },
+      { dir: 'outbound', body: 'Amazing!! You\'re going to love it 🤍 Ships within 2 business days — tag us when it arrives!', hoursAgo: 68 },
     ]
   },
   {
     name: 'Priya Bhatia',
     thread: 'label_priya_bhatia',
     status: 'Booked',
-    temperature: 'Hot',
-    messages: [
-      { dir: 'inbound',  body: 'Hi! I need a saree for my cousin\'s wedding next week. Do you have something in pastels?', hoursAgo: 96 },
-      { dir: 'outbound', body: 'Hello Priya! 🌸 Pastels for a wedding is such a gorgeous choice! We have a blush organza saree with gold threadwork at ₹12,000 and a mint tissue silk at ₹9,500. Both are available for immediate dispatch!', hoursAgo: 95 },
-      { dir: 'inbound',  body: 'The blush organza sounds perfect. Can I see more photos?', hoursAgo: 94 },
-      { dir: 'outbound', body: 'Sending you photos right now! Also posting a reel of the drape today evening so you can see how it falls ✨', hoursAgo: 93 },
-      { dir: 'inbound',  body: 'I just ordered it on your website! The drape looks so dreamy.', hoursAgo: 91 },
-      { dir: 'outbound', body: 'You\'re going to look absolutely beautiful 🤍 Since you need it next week, we\'ll prioritise dispatch. Tracking link coming your way!', hoursAgo: 90 },
-    ]
-  },
-  {
-    name: 'Nisha Verma',
-    thread: 'label_nisha_verma',
-    status: 'Replied',
-    temperature: 'Hot',
-    messages: [
-      { dir: 'inbound',  body: 'Hi! Do you ship to Dubai? I\'ve been wanting your coord sets for so long 😍', hoursAgo: 48 },
-      { dir: 'outbound', body: 'Hey Nisha! Yes we ship internationally 🌍 Shipping to Dubai takes 10-14 business days. Orders above ₹10,000 get free international shipping — below that it\'s ₹1,200 flat!', hoursAgo: 47 },
-      { dir: 'inbound',  body: 'Oh amazing! What about customs duties?', hoursAgo: 46 },
-      { dir: 'outbound', body: 'Customs duties are at the buyer\'s end — for UAE it\'s usually minimal. You can order directly from our website, we ship internationally to 15+ countries 😊', hoursAgo: 45 },
-      { dir: 'inbound',  body: 'Okay! I want the white western co-ord set. Let me order it today.', hoursAgo: 44 },
-      { dir: 'outbound', body: 'The white co-ord is ₹5,500 — such a classic pick! 🤍 Go ahead on the website, link in bio. Let us know if you need help at checkout!', hoursAgo: 43 },
-    ]
-  },
-  {
-    name: 'Divya Iyer',
-    thread: 'label_divya_iyer',
-    status: 'Follow-up Due',
     temperature: 'Warm',
     messages: [
-      { dir: 'inbound',  body: 'Hey! When is the black embroidered blazer coming back in stock? I missed it 😭', hoursAgo: 36 },
-      { dir: 'outbound', body: 'Divya, we feel you — that blazer sold out in 2 hours! 🖤 We\'re restocking by Thursday this week. Want me to add you to the waitlist? We\'ll DM you the moment it\'s live!', hoursAgo: 35 },
-      { dir: 'inbound',  body: 'Yes please!! What size should I get if I\'m usually a M in western wear?', hoursAgo: 34 },
-      { dir: 'outbound', body: 'For the blazer, M would be perfect for a fitted look or L if you love an oversized style 🖤 You\'re on the list for both — we\'ll ping you Thursday morning!', hoursAgo: 33 },
-    ]
-  },
-  {
-    name: 'Sneha Rao',
-    thread: 'label_sneha_rao',
-    status: 'Follow-up Due',
-    temperature: 'Warm',
-    messages: [
-      { dir: 'inbound',  body: 'Hi! I received my order but the kurta set size is a little big. Can I exchange for a smaller size?', hoursAgo: 60 },
-      { dir: 'outbound', body: 'Hey Sneha! So sorry the size didn\'t work out 💛 Yes we do exchanges within 7 days of delivery — item must be unworn and with original tags. Can you share your order number?', hoursAgo: 59 },
-      { dir: 'inbound',  body: 'Order #2047. I received it 3 days ago so I\'m within the window!', hoursAgo: 58 },
-      { dir: 'outbound', body: 'Perfect, you\'re well within the window 😊 I\'ll raise the exchange request now. Courier the kurta to our warehouse and we\'ll ship the smaller size within 2 days of receiving it. I\'ll DM you the warehouse address!', hoursAgo: 57 },
-      { dir: 'inbound',  body: 'Thank you! Is return shipping on me?', hoursAgo: 56 },
-      { dir: 'outbound', body: 'Return shipping is at your end — we cover the reshipping of the new size 🤍 I\'m DMing the address right now. So sorry again for the hassle!', hoursAgo: 55 },
+      { dir: 'inbound',  body: 'Hi! I need something for my cousin\'s wedding — daytime function, pastels preferred. What would you suggest from your current collection?', hoursAgo: 96 },
+      { dir: 'outbound', body: 'Hello Priya! 🌸 For a daytime wedding, our blush organza saree (₹12,000) or the mint tissue silk (₹9,500) would be perfect. Both are light, breathable, and stunning in photos ✨', hoursAgo: 95 },
+      { dir: 'inbound',  body: 'The blush organza sounds dreamy. Can I see more looks?', hoursAgo: 94 },
+      { dir: 'outbound', body: 'Just posted a reel of it on our page! Also DMing you some lookbook shots 🌸 You can order directly on our website — link in bio!', hoursAgo: 93 },
+      { dir: 'inbound',  body: 'Ordered the blush organza! So excited 🤍', hoursAgo: 91 },
+      { dir: 'outbound', body: 'You\'re going to look absolutely beautiful ✨ We\'ll prioritise dispatch — tracking link coming your way!', hoursAgo: 90 },
     ]
   },
   {
@@ -98,25 +46,77 @@ const DEMO_CONVERSATIONS = [
     status: 'Lost',
     temperature: 'Cold',
     messages: [
-      { dir: 'inbound',  body: 'Hi! Love your coord sets. Can you do 30% off? Budget is a bit tight right now.', hoursAgo: 144 },
-      { dir: 'outbound', body: 'Hi Meena! 🤍 Thank you for loving our pieces! We don\'t do individual discounts — our pricing reflects hand-crafted fabrics and sustainable production. We do run sale drops on stories though!', hoursAgo: 143 },
-      { dir: 'inbound',  body: 'Even 20%? Other brands give discounts on DMs.', hoursAgo: 142 },
-      { dir: 'outbound', body: 'I totally get it! We can\'t match individual discount requests but we have a big sale coming up next month 🌸 Would love to have you shop then — I\'ll tag you when it\'s live!', hoursAgo: 141 },
-      { dir: 'inbound',  body: 'I\'ll think about it. Thanks anyway.', hoursAgo: 140 },
+      { dir: 'inbound',  body: 'Hi! Is the chanderi fabric in the coord sets see-through? I have an outdoor event and I\'m worried.', hoursAgo: 144 },
+      { dir: 'outbound', body: 'Hi Meena! The chanderi coord set has a lining so it\'s not see-through at all 🌿 Perfect for outdoor events. The fabric is also quite breathable for summer. You can check the product details on our website!', hoursAgo: 143 },
+      { dir: 'inbound',  body: 'Oh okay. What\'s the price?', hoursAgo: 142 },
+      { dir: 'outbound', body: 'The coord set is ₹4,500 😊 Available in sage green, dusty pink, ivory, and black. Link in bio to order!', hoursAgo: 141 },
+      { dir: 'inbound',  body: 'That\'s a bit more than I was looking to spend. Let me think.', hoursAgo: 140 },
+      { dir: 'outbound', body: 'Totally understand! Our kurta sets start at ₹3,200 if that fits better 🌸 Happy to help you find the right piece!', hoursAgo: 139 },
     ]
   },
   {
-    name: 'Rohan for Wife',
+    name: 'Rohan Kapoor',
     thread: 'label_rohan_gifting',
     status: 'Lost',
     temperature: 'Cold',
     messages: [
-      { dir: 'inbound',  body: 'Hi! Want to gift my wife something for our anniversary. She loves your brand. What do you suggest under 5k?', hoursAgo: 200 },
-      { dir: 'outbound', body: 'How sweet! 🎁 Under ₹5,000 we have our coord sets at ₹4,500 and kurta sets at ₹3,200 — both bestsellers. What\'s her size?', hoursAgo: 199 },
-      { dir: 'inbound',  body: 'I think she\'s an S or M. She\'s quite petite.', hoursAgo: 198 },
-      { dir: 'outbound', body: 'For petite builds, S usually works beautifully with our sizing 🌸 I\'d suggest the dusty pink coord set in S — our most loved piece right now. You can order on the website, link in bio!', hoursAgo: 197 },
-      { dir: 'inbound',  body: 'I\'ll think about it and come back.', hoursAgo: 196 },
-      { dir: 'outbound', body: 'Of course! The dusty pink S is popular so it might sell out — feel free to DM if you need help choosing 🤍', hoursAgo: 195 },
+      { dir: 'inbound',  body: 'Hi! Want to gift my wife for our anniversary. She loves your brand. Something under ₹5,000?', hoursAgo: 200 },
+      { dir: 'outbound', body: 'How sweet! 🎁 Under ₹5,000 we have coord sets at ₹4,500 and kurta sets at ₹3,200 — both are bestsellers. What\'s her size?', hoursAgo: 199 },
+      { dir: 'inbound',  body: 'I think S or M. She\'s petite.', hoursAgo: 198 },
+      { dir: 'outbound', body: 'For petite builds, S usually works beautifully 🌸 The dusty pink coord set in S is our most loved piece right now — very gifting-worthy! Link in bio to order.', hoursAgo: 197 },
+      { dir: 'inbound',  body: 'I\'ll come back to this. Thanks!', hoursAgo: 196 },
+    ]
+  },
+  // ── POST-PURCHASE SUPPORT ──
+  {
+    name: 'Nisha Verma',
+    thread: 'label_nisha_verma',
+    status: 'Replied',
+    temperature: 'Hot',
+    messages: [
+      { dir: 'inbound',  body: 'Hi! I ordered 6 days ago (Order #3012) and haven\'t received a tracking link yet. Can you help?', hoursAgo: 12 },
+      { dir: 'outbound', body: 'Hey Nisha! So sorry for the delay 😟 Let me check Order #3012 with our dispatch team right now. I\'ll get back to you within the hour!', hoursAgo: 11 },
+      { dir: 'inbound',  body: 'Thank you! I need it by this weekend for an event.', hoursAgo: 10 },
+      { dir: 'outbound', body: 'Completely understand — I\'ve escalated this as urgent. Your order shipped yesterday and the tracking link is being updated. I\'ll DM it to you the moment I have it 🤍', hoursAgo: 9 },
+    ]
+  },
+  {
+    name: 'Ananya Singh',
+    thread: 'label_ananya_singh',
+    status: 'Booked',
+    temperature: 'Warm',
+    messages: [
+      { dir: 'inbound',  body: 'Hi! I ordered the mirror work kurta set in M but it\'s a bit loose. Can I exchange for S?', hoursAgo: 120 },
+      { dir: 'outbound', body: 'Hi Ananya! So sorry to hear that 💛 Yes we do exchanges within 7 days of delivery — item must be unworn with original tags. Can you share your order number?', hoursAgo: 119 },
+      { dir: 'inbound',  body: 'Order #2891. Received 4 days ago so I\'m within the window!', hoursAgo: 118 },
+      { dir: 'outbound', body: 'Perfect, you\'re within the window 😊 I\'ve raised the exchange request. Courier the kurta to our warehouse (DMing address now) and we\'ll ship the S within 2 days of receiving it!', hoursAgo: 117 },
+      { dir: 'inbound',  body: 'Sent it back! Thank you for making this so easy 🌸', hoursAgo: 100 },
+      { dir: 'outbound', body: 'Received your return 🤍 The S will be dispatched by tomorrow. You\'ll get a tracking link shortly!', hoursAgo: 96 },
+    ]
+  },
+  {
+    name: 'Sneha Rao',
+    thread: 'label_sneha_rao',
+    status: 'Follow-up Due',
+    temperature: 'Warm',
+    messages: [
+      { dir: 'inbound',  body: 'Hi! I think I received the wrong colour. I ordered ivory but got white?', hoursAgo: 60 },
+      { dir: 'outbound', body: 'Hey Sneha! I\'m so sorry about that 😟 Can you share your order number and a quick photo of what you received? I\'ll sort this out immediately!', hoursAgo: 59 },
+      { dir: 'inbound',  body: 'Order #3104. Sending a photo now.', hoursAgo: 58 },
+      { dir: 'outbound', body: 'Got it! That\'s definitely the white, not ivory — our mistake entirely. I\'m arranging a replacement right now. We\'ll send the correct piece and organise return pickup at no cost to you 🤍', hoursAgo: 57 },
+    ]
+  },
+  // ── RESTOCK & COLLECTION DROPS ──
+  {
+    name: 'Divya Iyer',
+    thread: 'label_divya_iyer',
+    status: 'Follow-up Due',
+    temperature: 'Warm',
+    messages: [
+      { dir: 'inbound',  body: 'Hey! I missed the rust mirror work kurta — it\'s sold out on the website 😭 Any chance of a restock?', hoursAgo: 36 },
+      { dir: 'outbound', body: 'Divya, we feel you — it sold out in hours! 🪬 We\'re restocking next week. Want me to add you to the priority waitlist? We\'ll DM you the moment it\'s live — before it goes on the website!', hoursAgo: 35 },
+      { dir: 'inbound',  body: 'Yes please!! Also adding me to all future restock alerts if possible 🙏', hoursAgo: 34 },
+      { dir: 'outbound', body: 'Done! You\'re on the list 🌸 We\'ll ping you first. Also sign up for restock alerts on the website product page — that way you get an email the second it\'s back!', hoursAgo: 33 },
     ]
   },
   {
@@ -125,34 +125,33 @@ const DEMO_CONVERSATIONS = [
     status: 'Replied',
     temperature: 'Warm',
     messages: [
-      { dir: 'inbound',  body: 'Hi! I love your pieces but I wear a XXL and don\'t see it on your website. Do you do custom orders?', hoursAgo: 24 },
-      { dir: 'outbound', body: 'Hey Kavya! 🌸 We stock XS to XL on the website, but yes we do custom orders for plus sizes! Starting at ₹6,000, takes 10-14 days. Can you share your measurements — bust, waist, hips?', hoursAgo: 23 },
-      { dir: 'inbound',  body: 'That\'s amazing! My measurements are 46-38-48. Which piece would look best?', hoursAgo: 22 },
-      { dir: 'outbound', body: 'With your measurements the wide-leg coord set would look absolutely gorgeous 🤍 I\'ll connect you with our tailor team to discuss fabric and detailing. Can I get your WhatsApp number?', hoursAgo: 21 },
+      { dir: 'inbound',  body: 'Hii!! When is the Monsoon Edit dropping? I saw hints on your stories and I\'m already excited 🌧️', hoursAgo: 6 },
+      { dir: 'outbound', body: 'Hiii Kavya!! 🤍 The Monsoon Edit drops this Friday at 8pm IST — coord sets, sarees, and some really special new pieces. Sign up for early access via the waitlist link in our bio!', hoursAgo: 5 },
+      { dir: 'inbound',  body: 'Just signed up!! What price range to expect?', hoursAgo: 4 },
+      { dir: 'outbound', body: 'The Monsoon Edit goes from ₹3,200 for kurta sets to ₹15,000 for statement sarees 🌧️ Something for every budget. Friday 8pm — set a reminder!', hoursAgo: 3 },
     ]
   },
+  // ── COLLABS ──
   {
     name: 'Zara Creates',
     thread: 'label_zara_influencer',
     status: 'New',
     temperature: 'Warm',
     messages: [
-      { dir: 'inbound',  body: 'Hi The Label! I\'m a fashion content creator with 85k followers and I\'d love to collab 🤍 I do reels and GRWM content. Can we work something out?', hoursAgo: 6 },
-      { dir: 'outbound', body: 'Hi! Thank you so much for reaching out 🌟 We love your content! Please send your media kit and collab brief to collabs@thelabel.in — our team reviews every Monday and will come back with the right proposal!', hoursAgo: 5 },
-      { dir: 'inbound',  body: 'Will do! Just checking — is it paid or gifting?', hoursAgo: 4 },
-      { dir: 'outbound', body: 'Both, depending on reach and content plan 😊 Send the details over email and we\'ll come back with what works best for you!', hoursAgo: 3 },
+      { dir: 'inbound',  body: 'Hi The Label! I\'m a fashion content creator with 85k followers — I do reels and GRWM content. Would love to collab 🤍', hoursAgo: 6 },
+      { dir: 'outbound', body: 'Hi! Thank you so much for reaching out 🌟 We love your content! Please send your media kit and collab brief to collabs@thelabel.in — our team reviews every Monday and will come back with a proposal!', hoursAgo: 5 },
+      { dir: 'inbound',  body: 'Will do! Is it paid or gifting?', hoursAgo: 4 },
+      { dir: 'outbound', body: 'Both, depending on reach and content plan 😊 Email us the details and we\'ll come back with what works best!', hoursAgo: 3 },
     ]
   },
   {
     name: 'Fatima Sheikh',
-    thread: 'label_fatima_sheikh',
+    thread: 'label_fatima_collab',
     status: 'New',
     temperature: 'Warm',
     messages: [
-      { dir: 'inbound',  body: 'Hiii!! When is the Monsoon Edit dropping?? I saw the hints on your stories and I\'m already obsessed 😭🌧️', hoursAgo: 3 },
-      { dir: 'outbound', body: 'Hiii Fatima!! 🤍 We\'re dropping the Monsoon Edit this Friday at 8pm IST — coord sets, sarees, and some very special pieces. Sign up for the waitlist via the link in our bio for first access!', hoursAgo: 2 },
-      { dir: 'inbound',  body: 'I just signed up!! What price range should I expect?', hoursAgo: 1 },
-      { dir: 'outbound', body: 'The Monsoon Edit goes from ₹3,200 for kurta sets to ₹15,000 for statement sarees 🌧️ Something for every budget. Friday 8pm — set a reminder!', hoursAgo: 0 },
+      { dir: 'inbound',  body: 'Hi! I\'m a fashion blogger with around 3k followers. I\'d love to do a gifting collab with The Label! 🌸', hoursAgo: 2 },
+      { dir: 'outbound', body: 'Hi Fatima! Thank you for reaching out 🤍 We love supporting up-and-coming creators! Please send your profile and content plan to collabs@thelabel.in and our team will get back to you. We review requests every Monday!', hoursAgo: 1 },
     ]
   },
 ];
@@ -202,14 +201,25 @@ A: Our chanderi and cotton pieces should be hand-washed in cold water. Silk sare
 };
 
 async function seedClothingDemo() {
-  console.log('🌱 Seeding clothing brand demo for user 3 (The Label)...\n');
+  console.log('🌱 Setting up The Label demo account...\n');
 
-  // Delete in FK-safe order
+  // Create or update the demo user
+  const hash = await bcrypt.hash(DEMO_PASSWORD, 10);
+  const { rows: userRows } = await pool.query(
+    `INSERT INTO users (email, password_hash, name)
+     VALUES ($1, $2, 'The Label')
+     ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, name = EXCLUDED.name
+     RETURNING id`,
+    [DEMO_EMAIL, hash]
+  );
+  const USER_ID = userRows[0].id;
+  console.log(`👤 User: ${DEMO_EMAIL} (id=${USER_ID})\n`);
+
+  // Clear existing data for this user (safe re-run)
   await pool.query(`DELETE FROM knowledge_suggestions WHERE user_id = $1`, [USER_ID]);
   await pool.query(`DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE user_id = $1)`, [USER_ID]);
   await pool.query(`DELETE FROM leads WHERE user_id = $1`, [USER_ID]);
   await pool.query(`DELETE FROM conversations WHERE user_id = $1`, [USER_ID]);
-  console.log('🗑️  Cleared existing demo data\n');
 
   for (const conv of DEMO_CONVERSATIONS) {
     const lastMsg = conv.messages[conv.messages.length - 1];
@@ -221,7 +231,7 @@ async function seedClothingDemo() {
          participant_name = EXCLUDED.participant_name,
          last_message_at  = EXCLUDED.last_message_at
        RETURNING id`,
-      [USER_ID, conv.thread, conv.name, `demo_${conv.thread}`, lastMsg.hoursAgo]
+      [USER_ID, conv.thread, conv.name, `label_${conv.thread}`, lastMsg.hoursAgo]
     );
     const convId = convRows[0].id;
 
