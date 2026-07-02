@@ -192,7 +192,12 @@ export async function getInsights(req, res) {
       return { name: c.participant_name || 'Unknown', status: c.status, messages: msgs };
     }));
 
-    const insights = await generateInsights(convData);
+    const { rows: profileRows } = await pool.query(
+      'SELECT business_type FROM business_profiles WHERE user_id = $1',
+      [req.user.userId]
+    );
+    const businessType = profileRows[0]?.business_type || 'business';
+    const insights = await generateInsights(convData, businessType);
     res.json({ insights });
   } catch (err) {
     res.status(500).json({ error: err.message });

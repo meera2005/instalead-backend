@@ -107,7 +107,7 @@ export async function chatReply(history, profile) {
   return response.choices[0].message.content.trim();
 }
 
-export async function generateInsights(conversations) {
+export async function generateInsights(conversations, businessType = 'business') {
   if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY not configured');
 
   const summaries = conversations.map(c => {
@@ -120,7 +120,7 @@ export async function generateInsights(conversations) {
     max_tokens: 800,
     messages: [{
       role: 'user',
-      content: `You are a business analyst. Analyze these Instagram DM conversations from a photography business and generate 5 sharp business insights.
+      content: `You are a business analyst. Analyze these Instagram DM conversations from a ${businessType} and generate 5 sharp business insights.
 
 ${summaries}
 
